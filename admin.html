@@ -1,109 +1,598 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>لوحة التحكم - إدارة المنتجات</title>
-  <style>
-    body { font-family: system-ui, sans-serif; background-color: #f4f4f9; padding: 20px; direction: rtl; }
-    .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    h2 { text-align: center; color: #333; }
-    .form-group { margin-bottom: 15px; }
-    label { display: block; margin-bottom: 5px; font-weight: bold; }
-    input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-    button { background-color: #10b981; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; }
-    button:hover { background-color: #059669; }
-    .product-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 10px 0; }
-    .delete-btn { background-color: #ef4444; width: auto; padding: 5px 10px; font-size: 14px; }
-    .delete-btn:hover { background-color: #dc2626; }
-  </style>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة إداره هوبا | HOBA Admin Panel</title>
+    <!-- Google Fonts: Tajawal -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS SDK (used to sync menu & settings live with the customer site) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brandRed: '#E50914',
+                        brandRedDark: '#B91C1C',
+                        brandDark: '#0E0E11',
+                        brandCard: '#18181C'
+                    },
+                    fontFamily: { sans: ['Tajawal', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Tajawal', sans-serif; background-color: #0E0E11; color: #FFFFFF; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0E0E11; }
+        ::-webkit-scrollbar-thumb { background: #E50914; border-radius: 4px; }
+    </style>
 </head>
-<body>
+<body class="bg-brandDark min-h-screen text-white antialiased">
 
-<div class="container">
-  <h2>إضافة منتج جديد</h2>
-  <form id="productForm">
-    <div class="form-group">
-      <label>اسم الطبق / المنتج:</label>
-      <input type="text" id="name" required placeholder="مثال: بيتزا ببروني">
+    <!-- PIN Authentication Screen -->
+    <div id="authOverlay" class="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4">
+        <div class="bg-brandCard border border-zinc-800 p-8 rounded-3xl max-w-md w-full text-center space-y-6 shadow-2xl">
+            <div class="w-16 h-16 bg-brandRed/20 border border-brandRed/40 text-brandRed rounded-2xl flex items-center justify-center text-3xl mx-auto">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <div>
+                <h2 class="text-2xl font-black text-white">دخول لوحة التحكم</h2>
+                <p class="text-zinc-400 text-sm mt-1">أدخل الرقم السري للوصول لإدارة المنيو والأسعار</p>
+            </div>
+            <div class="space-y-4">
+                <input type="password" id="pinInput" maxlength="8" placeholder="الرمز السري (الافتراضي: 1234)" class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-4 py-3.5 text-center text-2xl font-bold text-white tracking-widest focus:outline-none focus:border-brandRed">
+                <button onclick="verifyPin()" class="w-full bg-brandRed hover:bg-brandRedDark text-white py-3.5 rounded-2xl font-bold text-lg shadow-lg shadow-red-600/30 transition-all">
+                    تأكيد الدخول 🔑
+                </button>
+            </div>
+            <p id="pinError" class="text-red-500 text-xs font-bold hidden">الرقم السري غير صحيح!</p>
+        </div>
     </div>
-    <div class="form-group">
-      <label>السعر:</label>
-      <input type="number" id="price" required placeholder="مثال: 150">
+
+    <!-- Main Admin Dashboard Area -->
+    <div id="adminApp" class="hidden">
+        <!-- Header -->
+        <header class="bg-zinc-900/90 border-b border-zinc-800 sticky top-0 z-40 backdrop-blur">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-20">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-brandRed rounded-xl flex items-center justify-center text-white text-xl font-black">
+                            🛠️
+                        </div>
+                        <div>
+                            <h1 class="text-xl font-black text-white">لوحة تحكم هوبا</h1>
+                            <span class="text-xs text-zinc-400">إدارة الأصناف والأسعار وتفاصيل التواصل</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <a href="index.html" target="_blank" class="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 border border-zinc-700">
+                            <i class="fa-solid fa-eye"></i>
+                            معاينة موقع الزباين
+                        </a>
+                        <button onclick="logoutAdmin()" class="bg-red-950/60 border border-brandRed/40 text-brandRed hover:bg-brandRed hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all">
+                            خروج
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+            <!-- Quick Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-brandCard border border-zinc-800 p-5 rounded-2xl space-y-1">
+                    <span class="text-zinc-400 text-xs font-bold">إجمالي الأصناف</span>
+                    <p id="statTotalItems" class="text-3xl font-black text-white">0</p>
+                </div>
+                <div class="bg-brandCard border border-zinc-800 p-5 rounded-2xl space-y-1">
+                    <span class="text-green-400 text-xs font-bold">الأصناف المتاحة</span>
+                    <p id="statAvailableItems" class="text-3xl font-black text-green-400">0</p>
+                </div>
+                <div class="bg-brandCard border border-zinc-800 p-5 rounded-2xl space-y-1">
+                    <span class="text-red-400 text-xs font-bold">الأصناف الموقوفة</span>
+                    <p id="statDisabledItems" class="text-3xl font-black text-red-400">0</p>
+                </div>
+                <div class="bg-brandCard border border-zinc-800 p-5 rounded-2xl space-y-1">
+                    <span class="text-brandRed text-xs font-bold">الإنذارات والتوفر</span>
+                    <p class="text-sm font-bold text-zinc-300 mt-2">مزامنة فوريّة ⚡</p>
+                </div>
+            </div>
+
+            <!-- Tab Buttons -->
+            <div class="flex border-b border-zinc-800 gap-4">
+                <button onclick="switchTab('items')" id="tabBtnItems" class="tab-btn active border-b-2 border-brandRed text-brandRed pb-3 font-bold text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-utensils"></i> قائمة الطعام والأصناف
+                </button>
+                <button onclick="switchTab('settings')" id="tabBtnSettings" class="tab-btn text-zinc-400 pb-3 font-bold text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-gears"></i> إعدادات المطعم والواتس
+                </button>
+                <button onclick="switchTab('backup')" id="tabBtnBackup" class="tab-btn text-zinc-400 pb-3 font-bold text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-database"></i> النسخ الاحتياطي وتصدير البيانات
+                </button>
+            </div>
+
+            <!-- TAB 1: Menu Items Management -->
+            <section id="tabContentItems" class="space-y-6">
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-4 bg-brandCard p-4 rounded-2xl border border-zinc-800">
+                    <div class="flex items-center gap-3 w-full sm:w-auto">
+                        <select id="filterCategoryAdmin" onchange="renderAdminItems()" class="bg-zinc-900 border border-zinc-700 text-white text-sm rounded-xl px-4 py-2.5 font-bold focus:outline-none focus:border-brandRed">
+                            <option value="all">جميع التصنيفات</option>
+                            <option value="crepe">سندوتشات كريب 🌮</option>
+                            <option value="potatoes">سندوتشات بطاطس 🍟</option>
+                            <option value="syrian">سندوتشات سوري 🌯</option>
+                        </select>
+                    </div>
+
+                    <button onclick="openAddItemModal()" class="w-full sm:w-auto bg-brandRed hover:bg-brandRedDark text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-red-600/30 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus"></i> إضافة صنف جديد للمنيو
+                    </button>
+                </div>
+
+                <div id="adminItemsGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Dynamic Items List -->
+                </div>
+            </section>
+
+            <!-- TAB 2: Settings -->
+            <section id="tabContentSettings" class="hidden max-w-2xl mx-auto space-y-6">
+                <div class="bg-brandCard p-6 rounded-3xl border border-zinc-800 space-y-5">
+                    <h3 class="text-xl font-black text-white border-b border-zinc-800 pb-3">تحديث بيانات تواصل المطعم</h3>
+
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-zinc-300">اسم المطعم:</label>
+                        <input type="text" id="settingName" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white">
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-zinc-300">رقم الواتساب المستلم للطلبات (صيغة دولية بدون +):</label>
+                        <input type="text" id="settingWhatsapp" placeholder="201201740900" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white" dir="ltr">
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-zinc-300">أرقام التواصل والطلبات (الدليفري):</label>
+                        <input type="text" id="settingPhone" placeholder="01205814505 / 01272566267" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white" dir="ltr">
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-zinc-300">رقم الشكاوى والإدارة:</label>
+                        <input type="text" id="settingComplaints" placeholder="01201740900" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white" dir="ltr">
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-zinc-300">الرمز السري للدخول للوحة التحكم (PIN):</label>
+                        <input type="password" id="settingPin" placeholder="1234" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white" dir="ltr">
+                    </div>
+
+                    <button onclick="saveSettings()" class="w-full bg-brandRed hover:bg-brandRedDark text-white py-3.5 rounded-xl font-bold text-sm shadow-lg shadow-red-600/30">
+                        حفظ التغيرات 💾
+                    </button>
+                </div>
+            </section>
+
+            <!-- TAB 3: Backup & Restore -->
+            <section id="tabContentBackup" class="hidden max-w-2xl mx-auto space-y-6">
+                <div class="bg-brandCard p-6 rounded-3xl border border-zinc-800 space-y-6">
+                    <div>
+                        <h3 class="text-xl font-black text-white">إدارة بيانات المنيو واستعادتها</h3>
+                        <p class="text-zinc-400 text-sm mt-1">يمكنك تصدير المنيو كملف احتياطي أو زرع المنيو الإفتراضي</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <button onclick="exportMenuJSON()" class="bg-zinc-800 hover:bg-zinc-700 text-white p-4 rounded-2xl border border-zinc-700 font-bold text-sm flex flex-col items-center gap-2">
+                            <i class="fa-solid fa-download text-2xl text-brandRed"></i>
+                            تنزيل نسخة احتياطية من المنيو (JSON)
+                        </button>
+                        <button onclick="resetDefaultMenu()" class="bg-red-950/40 hover:bg-red-900/60 border border-brandRed/40 text-red-300 p-4 rounded-2xl font-bold text-sm flex flex-col items-center gap-2">
+                            <i class="fa-solid fa-rotate-left text-2xl text-brandRed"></i>
+                            استعادة المنيو الافتراضي الأساسي
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
     </div>
-    <button type="submit">إضافة للوحة التحكم</button>
-  </form>
 
-  <h2 style="margin-top: 30px;">المنتجات الحالية</h2>
-  <div id="productsList">جاري التحميل...</div>
-</div>
+    <!-- Edit/Add Item Modal -->
+    <div id="itemFormModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-brandCard border border-zinc-800 w-full max-w-xl rounded-3xl p-6 text-white space-y-5 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+                <h3 id="modalFormTitle" class="text-xl font-black">إضافة صنف جديد</h3>
+                <button onclick="closeFormModal()" class="text-zinc-400 hover:text-white text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
 
-<script>
-  // استبدل هذه القيم ببياناتك من حساب Supabase الخاص بك
-  const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-  const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
-  
-  const { createClient } = supabase;
-  const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+            <form id="itemForm" onsubmit="handleSaveItem(event)" class="space-y-4">
+                <input type="hidden" id="formItemId">
 
-  const form = document.getElementById('productForm');
-  const productsList = document.getElementById('productsList');
+                <div class="grid sm:grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="block text-xs font-bold text-zinc-300">اسم الصنف:</label>
+                        <input type="text" id="formItemName" required placeholder="مثال: كريب كرسبي" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-brandRed">
+                    </div>
 
-  // جلب المنتجات وعرضها
-  async function loadProducts() {
-    const { data, error } = await db.from('products').select('*').order('id', { ascending: false });
-    if (error) {
-      productsList.innerHTML = 'حدث خطأ أثناء جلب المنتجات';
-      return;
-    }
-    
-    if (!data || data.length === 0) {
-      productsList.innerHTML = '<p>لا توجد منتجات مضافة بعد.</p>';
-      return;
-    }
+                    <div class="space-y-1">
+                        <label class="block text-xs font-bold text-zinc-300">التصنيف:</label>
+                        <select id="formItemCategory" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-brandRed">
+                            <option value="crepe">سندوتشات كريب 🌮</option>
+                            <option value="potatoes">سندوتشات بطاطس 🍟</option>
+                            <option value="syrian">سندوتشات سوري 🌯</option>
+                        </select>
+                    </div>
+                </div>
 
-    productsList.innerHTML = '';
-    data.forEach(item => {
-      const div = document.createElement('div');
-      div.className = 'product-item';
-      div.innerHTML = `
-        <span><strong>${item.name}</strong> - ${item.price} ج.م</span>
-        <button class="delete-btn" onclick="deleteProduct(${item.id})">حذف</button>
-      `;
-      productsList.appendChild(div);
-    });
-  }
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-zinc-300">رابط صورة الصنف (Image URL):</label>
+                    <input type="url" id="formItemImage" placeholder="https://..." class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-brandRed" dir="ltr">
+                </div>
 
-  // إضافة منتج جديد
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const name = document.getElementById('name').value;
-    const price = document.getElementById('price').value;
+                <!-- Sizes & Prices -->
+                <div class="border border-zinc-800 p-4 rounded-2xl bg-zinc-900/50 space-y-3">
+                    <span class="block text-xs font-bold text-brandRed">أسعار الأحجام الثلاثة:</span>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="space-y-1">
+                            <label class="block text-[11px] font-bold text-zinc-400">سعر الصغير (ج):</label>
+                            <input type="number" id="formPriceSmall" min="0" required class="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2 text-center text-sm font-bold text-white">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="block text-[11px] font-bold text-zinc-400">سعر الوسط (ج):</label>
+                            <input type="number" id="formPriceMedium" min="0" required class="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2 text-center text-sm font-bold text-white">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="block text-[11px] font-bold text-zinc-400">سعر الكبير (ج):</label>
+                            <input type="number" id="formPriceLarge" min="0" required class="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2 text-center text-sm font-bold text-white">
+                        </div>
+                    </div>
+                </div>
 
-    const { error } = await db.from('products').insert([{ name, price }]);
-    if (error) {
-      alert('خطأ في الإضافة: ' + error.message);
-    } else {
-      form.reset();
-      loadProducts();
-    }
-  });
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-zinc-300">وصف قصير للصنف:</label>
+                    <textarea id="formItemDesc" rows="2" placeholder="وصف الحشوة أو المكونات..." class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-brandRed"></textarea>
+                </div>
 
-  // حذف منتج
-  async function deleteProduct(id) {
-    if (confirm('هل أنت تأكد من حذف هذا المنتج؟')) {
-      const { error } = await db.from('products').delete().eq('id', id);
-      if (error) {
-        alert('خطأ أثناء الحذف: ' + error.message);
-      } else {
-        loadProducts();
-      }
-    }
-  }
+                <div class="flex items-center gap-3 pt-2">
+                    <input type="checkbox" id="formItemAvailable" class="w-5 h-5 accent-brandRed rounded">
+                    <label for="formItemAvailable" class="text-sm font-bold text-zinc-200 cursor-pointer">الصنف متوفر حالياً في المنيو</label>
+                </div>
 
-  loadProducts();
-</script>
+                <div class="flex gap-3 pt-4 border-t border-zinc-800">
+                    <button type="submit" class="flex-1 bg-brandRed hover:bg-brandRedDark text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-red-600/30">
+                        حفظ الصنف 💾
+                    </button>
+                    <button type="button" onclick="closeFormModal()" class="px-5 bg-zinc-800 text-zinc-300 hover:text-white rounded-xl font-bold text-sm">
+                        إلغاء
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
+    <!-- Admin JS Code -->
+    <script>
+        // Supabase project connection (shared with index.html)
+        const SUPABASE_URL = "https://xzdjdertpiphptsbvgci.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh6ZGpkZXJ0cGlwaHB0c2J2Z2NpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzOTc4MzcsImV4cCI6MjEwNDk3MzgzN30.3Mn4qu_u60t4evFwUfnI0ud7kGNTGnBixm8WD1lERVY";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let menuData = [];
+        let settings = {};
+
+        let adminDataReady = null;
+        document.addEventListener('DOMContentLoaded', () => {
+            adminDataReady = loadAdminData();
+        });
+
+        async function loadAdminData() {
+            const defaultSettings = {
+                restaurantName: "مطعم هوبا - HOBA",
+                whatsappNumber: "201201740900",
+                phoneNumber: "01205814505 / 01272566267",
+                complaintsNumber: "01201740900",
+                currency: "جنيه",
+                adminPin: "1234"
+            };
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('app_data')
+                    .select('key, value')
+                    .in('key', ['hoba_settings_v2', 'hoba_menu_v2']);
+
+                if (error) throw error;
+
+                const settingsRow = data && data.find(r => r.key === 'hoba_settings_v2');
+                const menuRow = data && data.find(r => r.key === 'hoba_menu_v2');
+
+                settings = settingsRow ? settingsRow.value : defaultSettings;
+                menuData = menuRow ? menuRow.value : [];
+
+                localStorage.setItem('hoba_settings_v2', JSON.stringify(settings));
+                localStorage.setItem('hoba_menu_v2', JSON.stringify(menuData));
+            } catch (err) {
+                console.error('Supabase load failed, falling back to local cache:', err);
+                const savedSettings = localStorage.getItem('hoba_settings_v2');
+                settings = savedSettings ? JSON.parse(savedSettings) : defaultSettings;
+                const savedMenu = localStorage.getItem('hoba_menu_v2');
+                menuData = savedMenu ? JSON.parse(savedMenu) : [];
+            }
+        }
+
+        async function saveToSupabase(key, value) {
+            const { error } = await supabaseClient
+                .from('app_data')
+                .upsert({ key, value, updated_at: new Date().toISOString() });
+            if (error) {
+                console.error('Supabase save failed:', error);
+                alert('حصل خطأ أثناء الحفظ على Supabase، اتأكد من اتصال الإنترنت وحاول تاني.');
+            }
+        }
+
+        async function verifyPin() {
+            if (adminDataReady) await adminDataReady;
+            const input = document.getElementById('pinInput').value;
+            const currentPin = settings.adminPin || "1234";
+
+            if(input === currentPin) {
+                document.getElementById('authOverlay').classList.add('hidden');
+                document.getElementById('adminApp').classList.remove('hidden');
+                initAdminDashboard();
+            } else {
+                document.getElementById('pinError').classList.remove('hidden');
+            }
+        }
+
+        function logoutAdmin() {
+            document.getElementById('adminApp').classList.add('hidden');
+            document.getElementById('authOverlay').classList.remove('hidden');
+            document.getElementById('pinInput').value = '';
+            document.getElementById('pinError').classList.add('hidden');
+        }
+
+        function initAdminDashboard() {
+            renderAdminItems();
+            populateSettingsForm();
+        }
+
+        function updateStats() {
+            document.getElementById('statTotalItems').textContent = menuData.length;
+            const availableCount = menuData.filter(i => i.available !== false).length;
+            document.getElementById('statAvailableItems').textContent = availableCount;
+            document.getElementById('statDisabledItems').textContent = menuData.length - availableCount;
+        }
+
+        function renderAdminItems() {
+            updateStats();
+            const grid = document.getElementById('adminItemsGrid');
+            const categoryFilter = document.getElementById('filterCategoryAdmin').value;
+
+            let filtered = menuData;
+            if(categoryFilter !== 'all') {
+                filtered = filtered.filter(i => i.category === categoryFilter);
+            }
+
+            if(filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-12 text-zinc-500">
+                        <p class="font-bold">لا توجد أصناف في هذا التصنيف</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(item => {
+                const isAvailable = item.available !== false;
+                const smallPrice = item.sizes?.[0]?.price || item.price;
+                const mediumPrice = item.sizes?.[1]?.price || '-';
+                const largePrice = item.sizes?.[2]?.price || '-';
+
+                return `
+                <div class="bg-brandCard rounded-2xl border ${isAvailable ? 'border-zinc-800' : 'border-red-900/40 opacity-70'} p-4 flex flex-col justify-between space-y-4">
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-3">
+                            <img src="${item.image || 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=200&q=80'}" class="w-16 h-16 rounded-xl object-cover shrink-0">
+                            <div>
+                                <h4 class="font-bold text-white text-base">${item.name}</h4>
+                                <span class="text-xs text-brandRed font-semibold">${getCategoryLabel(item.category)}</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-1 text-center bg-zinc-900 p-2 rounded-xl text-xs font-bold">
+                            <div class="text-zinc-400">صغير: <span class="text-white block">${smallPrice} ج</span></div>
+                            <div class="text-zinc-400">وسط: <span class="text-white block">${mediumPrice} ج</span></div>
+                            <div class="text-zinc-400">كبير: <span class="text-white block">${largePrice} ج</span></div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between border-t border-zinc-800 pt-3">
+                        <button onclick="toggleItemStatus('${item.id}')" class="px-3 py-1.5 rounded-lg text-xs font-bold ${isAvailable ? 'bg-green-950/60 text-green-400 border border-green-800/40' : 'bg-red-950/60 text-red-400 border border-red-800/40'}">
+                            ${isAvailable ? 'متوفر ✓' : 'موقوف ✗'}
+                        </button>
+
+                        <div class="flex items-center gap-2">
+                            <button onclick="openEditItemModal('${item.id}')" class="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-xs">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button onclick="deleteItem('${item.id}')" class="p-2 bg-red-950/60 hover:bg-red-900 text-red-400 rounded-lg text-xs">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        function getCategoryLabel(cat) {
+            if(cat === 'crepe') return 'سندوتشات كريب 🌮';
+            if(cat === 'potatoes') return 'سندوتشات بطاطس 🍟';
+            if(cat === 'syrian') return 'سندوتشات سوري 🌯';
+            return cat;
+        }
+
+        function toggleItemStatus(id) {
+            const item = menuData.find(i => i.id === id);
+            if(item) {
+                item.available = item.available === false ? true : false;
+                saveAndSyncMenu();
+            }
+        }
+
+        function deleteItem(id) {
+            if(confirm('هل أنت تأكد من حذف هذا الصنف من المنيو؟')) {
+                menuData = menuData.filter(i => i.id !== id);
+                saveAndSyncMenu();
+            }
+        }
+
+        function openAddItemModal() {
+            document.getElementById('formItemId').value = '';
+            document.getElementById('modalFormTitle').textContent = 'إضافة صنف جديد';
+            document.getElementById('itemForm').reset();
+            document.getElementById('formItemAvailable').checked = true;
+            document.getElementById('itemFormModal').classList.remove('hidden');
+        }
+
+        function openEditItemModal(id) {
+            const item = menuData.find(i => i.id === id);
+            if(!item) return;
+
+            document.getElementById('formItemId').value = item.id;
+            document.getElementById('modalFormTitle').textContent = 'تعديل الصنف';
+            document.getElementById('formItemName').value = item.name;
+            document.getElementById('formItemCategory').value = item.category;
+            document.getElementById('formItemImage').value = item.image || '';
+            document.getElementById('formItemDesc').value = item.desc || '';
+            document.getElementById('formItemAvailable').checked = item.available !== false;
+
+            document.getElementById('formPriceSmall').value = item.sizes?.[0]?.price || item.price;
+            document.getElementById('formPriceMedium').value = item.sizes?.[1]?.price || '';
+            document.getElementById('formPriceLarge').value = item.sizes?.[2]?.price || '';
+
+            document.getElementById('itemFormModal').classList.remove('hidden');
+        }
+
+        function closeFormModal() {
+            document.getElementById('itemFormModal').classList.add('hidden');
+        }
+
+        function handleSaveItem(e) {
+            e.preventDefault();
+            const id = document.getElementById('formItemId').value;
+            const name = document.getElementById('formItemName').value.trim();
+            const category = document.getElementById('formItemCategory').value;
+            const image = document.getElementById('formItemImage').value.trim();
+            const desc = document.getElementById('formItemDesc').value.trim();
+            const available = document.getElementById('formItemAvailable').checked;
+
+            const priceSmall = Number(document.getElementById('formPriceSmall').value);
+            const priceMedium = Number(document.getElementById('formPriceMedium').value);
+            const priceLarge = Number(document.getElementById('formPriceLarge').value);
+
+            const sizes = [
+                { name: 'صغير', price: priceSmall },
+                { name: 'وسط', price: priceMedium },
+                { name: 'كبير', price: priceLarge }
+            ];
+
+            const itemPayload = {
+                id: id || 'item-' + Date.now(),
+                category,
+                name,
+                desc: desc || `صغير: ${priceSmall} ج | وسط: ${priceMedium} ج | كبير: ${priceLarge} ج`,
+                price: priceSmall,
+                available,
+                sizes,
+                image: image || 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=80'
+            };
+
+            if(id) {
+                const index = menuData.findIndex(i => i.id === id);
+                if(index !== -1) menuData[index] = itemPayload;
+            } else {
+                menuData.unshift(itemPayload);
+            }
+
+            saveAndSyncMenu();
+            closeFormModal();
+        }
+
+        async function saveAndSyncMenu() {
+            localStorage.setItem('hoba_menu_v2', JSON.stringify(menuData));
+            renderAdminItems();
+            await saveToSupabase('hoba_menu_v2', menuData);
+        }
+
+        function populateSettingsForm() {
+            document.getElementById('settingName').value = settings.restaurantName || '';
+            document.getElementById('settingWhatsapp').value = settings.whatsappNumber || '';
+            document.getElementById('settingPhone').value = settings.phoneNumber || '';
+            document.getElementById('settingComplaints').value = settings.complaintsNumber || '';
+            document.getElementById('settingPin').value = settings.adminPin || '1234';
+        }
+
+        async function saveSettings() {
+            settings.restaurantName = document.getElementById('settingName').value.trim();
+            settings.whatsappNumber = document.getElementById('settingWhatsapp').value.trim();
+            settings.phoneNumber = document.getElementById('settingPhone').value.trim();
+            settings.complaintsNumber = document.getElementById('settingComplaints').value.trim();
+            settings.adminPin = document.getElementById('settingPin').value.trim() || '1234';
+
+            localStorage.setItem('hoba_settings_v2', JSON.stringify(settings));
+            await saveToSupabase('hoba_settings_v2', settings);
+            alert('تم حفظ إعدادات المطعم بنجاح! 💾');
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active', 'border-b-2', 'border-brandRed', 'text-brandRed');
+                btn.classList.add('text-zinc-400');
+            });
+
+            document.getElementById('tabContentItems').classList.add('hidden');
+            document.getElementById('tabContentSettings').classList.add('hidden');
+            document.getElementById('tabContentBackup').classList.add('hidden');
+
+            if(tab === 'items') {
+                document.getElementById('tabBtnItems').classList.add('active', 'border-b-2', 'border-brandRed', 'text-brandRed');
+                document.getElementById('tabContentItems').classList.remove('hidden');
+            } else if(tab === 'settings') {
+                document.getElementById('tabBtnSettings').classList.add('active', 'border-b-2', 'border-brandRed', 'text-brandRed');
+                document.getElementById('tabContentSettings').classList.remove('hidden');
+            } else if(tab === 'backup') {
+                document.getElementById('tabBtnBackup').classList.add('active', 'border-b-2', 'border-brandRed', 'text-brandRed');
+                document.getElementById('tabContentBackup').classList.remove('hidden');
+            }
+        }
+
+        function exportMenuJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(menuData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `HOBA_MENU_BACKUP_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        async function resetDefaultMenu() {
+            if(confirm('هل تريد استعادة المنيو الافتراضي الأساسي؟ ستفقد التعديلات الحالية.')) {
+                const { error } = await supabaseClient.from('app_data').delete().eq('key', 'hoba_menu_v2');
+                if (error) console.error('Supabase reset failed:', error);
+                localStorage.removeItem('hoba_menu_v2');
+                await loadAdminData();
+                renderAdminItems();
+                alert('تمت استعادة المنيو الافتراضي بنجاح!');
+            }
+        }
+    </script>
 </body>
 </html>
