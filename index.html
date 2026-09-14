@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" class="scroll-smooth">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مطعم هوبا | HOBA - قائمة الطعام أونلاين</title>
+    <title>لوحة إداره هوبا | HOBA Admin Panel</title>
     <!-- Google Fonts: Tajawal -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Supabase JS SDK (used to sync menu & settings live with the admin panel) -->
+    <!-- Supabase JS SDK (used to sync menu & settings live with the customer site) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <script>
         tailwind.config = {
@@ -22,19 +22,10 @@
                         brandRed: '#E50914',
                         brandRedDark: '#B91C1C',
                         brandDark: '#0E0E11',
-                        brandDarkCard: '#18181C',
-                        brandGray: '#F8FAFC'
+                        brandCard: '#18181C'
                     },
-                    fontFamily: { sans: ['Tajawal', 'sans-serif'] }    </style>
-</head>
-<body class="bg-brandDark text-white antialiased">
-
-    <!-- Header Navigation -->
-    <header class="sticky top-0 z-50 backdrop-blur-md bg-black/85 border-b border-zinc-800 transition-all duration-300">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-20">
-                <a href="#" class="flex items-center gap-3 group">
-                    <div class="w-12 h-12 bg-gradient-to-tr from-brandRed to-red-500 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-red-900/40 group-hover:scale-105 transition-transform">
+                    fontFamily: { sans: ['Tajawal', 'sans-serif'] }
+                }                    <div class="w-12 h-12 bg-gradient-to-tr from-brandRed to-red-500 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-red-900/40 group-hover:scale-105 transition-transform">
                         🌮
                     </div>
                     <div>
