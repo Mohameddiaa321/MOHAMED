@@ -12,6 +12,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS SDK (used to sync menu & settings live with the admin panel) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -23,18 +25,7 @@
                         brandDarkCard: '#18181C',
                         brandGray: '#F8FAFC'
                     },
-                    fontFamily: { sans: ['Tajawal', 'sans-serif'] }
-                }
-            }
-        }
-    </script>
-    <style>
-        body { font-family: 'Tajawal', sans-serif; background-color: #0E0E11; color: #FFFFFF; overflow-x: hidden; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0E0E11; }
-        ::-webkit-scrollbar-thumb { background: #E50914; border-radius: 4px; }
-        .text-glow { text-shadow: 0 0 12px rgba(229, 9, 20, 0.5); }
-    </style>
+                    fontFamily: { sans: ['Tajawal', 'sans-serif'] }    </style>
 </head>
 <body class="bg-brandDark text-white antialiased">
 
